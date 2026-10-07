@@ -3,7 +3,7 @@
 // para avisar de las alertas del servidor con una notificacion aunque la app este cerrada.
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AppState, Platform } from 'react-native';
-import { conectarWS, CONTENEDOR, leerTelemetria, urlWs, type AlertaServidor } from './api';
+import { conectarWS, esDeLote, leerTelemetria, type AlertaServidor } from './api';
 
 type Lib = typeof import('react-native-notify-kit');
 
@@ -31,12 +31,20 @@ export const monitorSoportado = lib !== null;
 let urlActual = '';
 let detener: (() => void) | null = null;
 let urlEnEjecucion: string | null = null;
+// Termo que se muestra en la notificacion fija (el que la enfermera tiene en pantalla).
+let contenedorActual: string | null = null;
+
+export function fijarTermoMonitor(contenedor: string | null) {
+  contenedorActual = contenedor;
+}
 
 const TIPO: Record<AlertaServidor['type'], string> = {
   OUT_OF_RANGE: 'Temperatura fuera de rango',
   RAPID_CHANGE: 'Cambio brusco de temperatura',
   SENSOR_OFFLINE: 'Sensor sin datos',
   INVALID_READING: 'Lectura inválida del sensor',
+  LOT_EXPIRING: 'Lote por vencer',
+  LOT_EXPIRED: 'Lote vencido',
 };
 
 // Tarea que vive mientras dure el servicio. No depende de React: si la pantalla se destruye, sigue.
@@ -53,7 +61,8 @@ async function tarea() {
 
   const refrescar = () => {
     if (alertasAbierto || deviceAbierto) ultimaConexion = Date.now();
-    const texto = temperatura === null ? 'Esperando lecturas del sensor…' : `Temperatura actual: ${temperatura.toFixed(1)} °C`;
+    const termo = contenedorActual ? `Termo ${contenedorActual}: ` : '';
+    const texto = temperatura === null ? `${termo}esperando lecturas del sensor…` : `${termo}${temperatura.toFixed(1)} °C`;
     if (texto !== textoMostrado) {
       textoMostrado = texto;
       n.displayNotification({
@@ -76,8 +85,10 @@ async function tarea() {
     }
   };
 
+  // El backend solo envia las alertas de los termos de esta cuenta.
   const cierraAlertas = conectarWS(
-    urlWs(url, '/ws/alerts'),
+    url,
+    '/ws/alerts',
     (txt) => {
       let a: AlertaServidor;
       try {
@@ -85,7 +96,8 @@ async function tarea() {
       } catch {
         return;
       }
-      if (a.contenedor !== CONTENEDOR) return;
+      // Los avisos (p. ej. ASIGNACION_CAMBIADA) no son alertas; las de vencimiento no suenan con la app cerrada.
+      if (typeof a.id !== 'number' || esDeLote(a)) return;
       const id = `alerta-${a.id}`;
       if (a.status !== 'ACTIVE') {
         // Vista o resuelta: ya no hace falta insistir.
@@ -99,7 +111,7 @@ async function tarea() {
       notificadas.add(a.id);
       n.displayNotification({
         id,
-        title: `${a.severity === 'CRITICAL' ? 'CRÍTICA: ' : 'Alerta: '}${TIPO[a.type]}`,
+        title: `${a.severity === 'CRITICAL' ? 'CRÍTICA: ' : 'Alerta: '}${a.title || TIPO[a.type] || 'Alerta'}`,
         body: a.message,
         android: {
           smallIcon: 'ic_notification',
@@ -118,9 +130,10 @@ async function tarea() {
     },
   );
   const cierraDevice = conectarWS(
-    urlWs(url, '/ws/device'),
+    url,
+    '/ws/device',
     (txt) => {
-      const l = leerTelemetria(txt);
+      const l = leerTelemetria(txt, contenedorActual);
       if (l) temperatura = l.temperatura;
     },
     (abierto) => {

@@ -1,4 +1,6 @@
-// Perfiles de ejemplo (referenciales). Validar rangos y margenes con la NTS 136-MINSA/2017.
+import { nombreTermo, type Termo } from './api';
+
+// Rango que vigila la app: el que calcula el backend para el termo (con sus lotes activos o el perfil estándar).
 export type PerfilVacuna = {
   id: string;
   nombre: string;
@@ -10,13 +12,21 @@ export type PerfilVacuna = {
   nota: string;
 };
 
-export const PERFILES: PerfilVacuna[] = [
-  { id: 'pentavalente', nombre: 'Pentavalente', min: 2, max: 8, margenFrio: 1, margenCalor: 0.5, sensibleCongelacion: true, nota: 'Se daña por congelación' },
-  { id: 'hepb', nombre: 'Hepatitis B', min: 2, max: 8, margenFrio: 1, margenCalor: 0.5, sensibleCongelacion: true, nota: 'Se daña por congelación' },
-  { id: 'hpv', nombre: 'VPH', min: 2, max: 8, margenFrio: 1, margenCalor: 0.5, sensibleCongelacion: true, nota: 'Se daña por congelación' },
-  { id: 'spr', nombre: 'SPR', min: 2, max: 8, margenFrio: 0.5, margenCalor: 1, sensibleCongelacion: false, nota: 'Sensible al calor y a la luz' },
-  { id: 'bcg', nombre: 'BCG', min: 2, max: 8, margenFrio: 0.5, margenCalor: 1, sensibleCongelacion: false, nota: 'Sensible al calor y a la luz' },
-  { id: 'apo', nombre: 'Antipolio oral (APO)', min: -25, max: 8, margenFrio: 2, margenCalor: 1, sensibleCongelacion: false, nota: 'Tolera congelación; sensible al calor' },
-];
-
-export const perfilPorId = (id: string | null) => PERFILES.find((p) => p.id === id) ?? null;
+/** El margen de precaución es mayor del lado que daña a las vacunas del termo. */
+export function perfilDeTermo(t: Termo): PerfilVacuna {
+  const r = t.range ?? { minTemp: 2, maxTemp: 8, basedOn: 'PROFILE', profileName: null, freezeSensitive: true, heatSensitive: false };
+  const nota =
+    r.basedOn === 'LOTS'
+      ? `Rango calculado con los lotes del termo${r.freezeSensitive ? ' · se daña si se congela' : ''}`
+      : `Sin lotes: rango ${r.profileName ?? 'estándar 2–8 °C'}`;
+  return {
+    id: t.contenedor,
+    nombre: nombreTermo(t),
+    min: r.minTemp,
+    max: r.maxTemp,
+    margenFrio: r.freezeSensitive ? 1 : 0.5,
+    margenCalor: r.heatSensitive ? 1 : 0.5,
+    sensibleCongelacion: r.freezeSensitive,
+    nota,
+  };
+}

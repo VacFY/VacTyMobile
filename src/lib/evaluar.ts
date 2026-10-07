@@ -29,6 +29,9 @@ export function estadoLote(vencimiento: string): EstadoLote {
   return 'vigente';
 }
 
+// Un lote que el backend ya marcó como EXPIRED cuenta como vencido aunque la fecha local diga otra cosa.
+export const estadoDe = (l: { status: string; expiryDate: string }): EstadoLote => (l.status === 'EXPIRED' ? 'vencido' : estadoLote(l.expiryDate));
+
 export const fechaValida = (s: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const [y, m, d] = s.split('-').map(Number);

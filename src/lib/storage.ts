@@ -16,10 +16,13 @@ export async function guardar(clave: string, valor: unknown) {
 }
 
 export const CLAVES = {
-  vacuna: 'vacty.vacuna',
-  historial: 'vacty.historial',
-  alertas: 'vacty.alertas',
-  lotes: 'vacty.lotes',
+  historial: 'vacty.historial', // + .<contenedor>
+  lotes: 'vacty.lotes', // + .<contenedor>
+  termo: 'vacty.termo',
+  termos: 'vacty.termos',
+  usuario: 'vacty.usuario',
+  vacunas: 'vacty.vacunas',
+  vvm: 'vacty.vvm',
   url: 'vacty.url',
   monitoreo: 'vacty.monitoreo',
 };

@@ -3,9 +3,9 @@ import { BarraFlotante } from '../../components/BarraFlotante';
 import { useVacty } from '../../lib/estado';
 
 export default function TabsLayout() {
-  const { perfil } = useVacty();
-  // Sin vacuna elegida todavia: primero la seleccion.
-  if (!perfil) return <Redirect href="/seleccion" />;
+  const { termo, termosListos } = useVacty();
+  // Sin termo todavia: primero vincular uno (o elegirlo, si es supervisor). Mientras carga la lista, se espera.
+  if (!termo) return termosListos ? <Redirect href="/termos" /> : null;
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <BarraFlotante {...props} />}>
       <Tabs.Screen name="index" options={{ title: 'Monitor' }} />

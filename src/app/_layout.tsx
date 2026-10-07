@@ -21,7 +21,7 @@ function Rutas() {
       </Stack.Protected>
       <Stack.Protected guard={sesion === 'dentro'}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="seleccion" />
+        <Stack.Screen name="termos" />
         <Stack.Screen name="lote/[id]" />
         <Stack.Screen name="historial-completo" />
       </Stack.Protected>

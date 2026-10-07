@@ -9,6 +9,8 @@ const TITULO: Record<AlertaServidor['type'], string> = {
   RAPID_CHANGE: 'Cambio brusco',
   SENSOR_OFFLINE: 'Sensor sin datos',
   INVALID_READING: 'Lectura inválida',
+  LOT_EXPIRING: 'Lote por vencer',
+  LOT_EXPIRED: 'Lote vencido',
 };
 const ESTADO = { ACTIVE: 'Sin atender', ACKNOWLEDGED: 'Vista', RESOLVED: 'Resuelta' } as const;
 
@@ -26,11 +28,14 @@ export function AlertaFila({ a, onReconocer, ultimo }: { a: AlertaServidor; onRe
           {a.status === 'ACTIVE' && <Punto color={color} pulso />}
           <Text style={{ fontFamily: F.bold, fontSize: 16, color, flex: 1 }}>
             {a.severity === 'CRITICAL' && !resuelta ? 'Crítica · ' : ''}
-            {TITULO[a.type]}
+            {a.title || TITULO[a.type] || 'Alerta'}
           </Text>
           <T v="chico" c="sub">{ESTADO[a.status]}</T>
         </View>
         <T v="cuerpo" c="sub">{a.message}</T>
+        {!!a.affectedLots?.length && (
+          <T v="chico" c="sub">Lotes: {a.affectedLots.map((l) => `${l.vaccine} ${l.lotNumber}`).join(', ')}</T>
+        )}
         <T v="chico" c="sub">{hace(a.startedAt)}</T>
         {a.status === 'ACTIVE' && onReconocer && (
           <Pressable onPress={() => onReconocer(a.id)} hitSlop={10} style={{ alignSelf: 'flex-start', marginTop: 6, borderBottomWidth: 2, borderBottomColor: t.primario }}>

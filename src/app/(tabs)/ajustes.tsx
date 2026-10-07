@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, AppState, Platform, Switch, View } from 'react-native';
 import { Aparecer, Boton, Fila, Pantalla, Punto, Seccion, T } from '../../components/ui';
@@ -16,7 +17,7 @@ function Estado({ color, texto }: { color: string; texto: string }) {
 
 export default function Ajustes() {
   const t = useTema();
-  const { url, servidorConectado, sensorActivo, perfilSync, limpiarHistorial, salir, monitoreo, cambiarMonitoreo, estadoMonitor } = useVacty();
+  const { url, servidorConectado, sensorActivo, perfil, termo, usuario, limpiarHistorial, salir, monitoreo, cambiarMonitoreo, estadoMonitor } = useVacty();
   const [bateria, setBateria] = useState(false);
 
   useEffect(() => {
@@ -45,10 +46,22 @@ export default function Ajustes() {
           <Fila icono="pulse" titulo="Sensor" derecha={<Estado color={sensorActivo ? t.ok : t.precaucion} texto={sensorActivo ? 'Enviando' : 'Sin lecturas'} />} />
           <Fila
             icono="medical"
-            titulo="Rango de la vacuna"
+            titulo={termo ? `Rango del termo ${termo.contenedor}` : 'Rango del termo'}
+            detalle={perfil?.nota}
             ultimo
-            derecha={<Estado color={perfilSync === 'ok' ? t.ok : perfilSync === 'error' ? t.alerta : t.precaucion} texto={perfilSync === 'ok' ? 'Sincronizado' : perfilSync === 'error' ? 'Error' : 'Sincronizando'} />}
+            derecha={<T v="subtitulo">{perfil ? `${perfil.min}–${perfil.max} °C` : '--'}</T>}
           />
+        </Seccion>
+      </Aparecer>
+
+      <Aparecer i={1}>
+        <Seccion titulo="Cuenta">
+          <Fila
+            icono="person-circle"
+            titulo={usuario?.nombre ?? (usuario ? `DNI ${usuario.dni}` : 'Sin datos')}
+            detalle={usuario ? `${usuario.rol === 'SUPERVISOR' ? 'Supervisor' : 'Enfermera'} · DNI ${usuario.dni}` : undefined}
+          />
+          <Fila icono="cube" titulo={usuario?.rol === 'SUPERVISOR' ? 'Termos' : 'Mis termos'} detalle="Vincular, cambiar o entregar" onPress={() => router.push('/termos')} ultimo />
         </Seccion>
       </Aparecer>
 

@@ -24,10 +24,11 @@ function Cifra({ etiqueta, valor, color }: { etiqueta: string; valor: string; co
 
 export default function Historial() {
   const t = useTema();
-  const { perfil, alertas, reconocer } = useVacty();
+  const { perfil, termo, alertas: todas, reconocer } = useVacty();
   const [rango, setRango] = useState<RangoClave>('24h');
   const h = useHistorial(rango);
-  if (!perfil) return null;
+  if (!perfil || !termo) return null;
+  const alertas = todas.filter((a) => a.contenedor === termo.contenedor);
 
   const stats = h.puntos ? estadisticas(h.puntos, perfil.min, perfil.max) : null;
   const reales = h.cortes.filter((c) => !c.inicio);
@@ -37,7 +38,12 @@ export default function Historial() {
   const fx = rango === '7d' || rango === '24h' ? dmhm : hm;
 
   return (
-    <Pantalla titulo="Historial" subtitulo="Lo que midió el sensor y lo que pasó" onRefresh={h.recargar} refrescando={h.cargando && !!h.puntos}>
+    <Pantalla
+      titulo="Historial"
+      subtitulo={termo.asignadoDesde ? `${perfil.nombre} · desde que lo vinculaste` : `${perfil.nombre} · lo que midió el sensor y lo que pasó`}
+      onRefresh={h.recargar}
+      refrescando={h.cargando && !!h.puntos}
+    >
       <Aparecer i={1}>
         <Segmentos opciones={RANGOS.map((r) => ({ clave: r.clave, titulo: r.titulo }))} valor={rango} onChange={setRango} />
       </Aparecer>

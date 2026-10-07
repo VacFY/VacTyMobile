@@ -12,7 +12,7 @@ type Item = { tipo: 'lectura'; p: Lectura } | { tipo: 'corte'; desde: number; ha
 
 export default function HistorialCompleto() {
   const t = useTema();
-  const { perfil } = useVacty();
+  const { perfil, termo } = useVacty();
   const [rango, setRango] = useState<RangoClave>('24h');
   const h = useHistorial(rango);
 
@@ -36,11 +36,11 @@ export default function HistorialCompleto() {
     return salida;
   }, [h.puntos, h.cortes]);
 
-  if (!perfil) return null;
+  if (!perfil || !termo) return null;
 
   const cabecera = (
     <View style={{ gap: 18, paddingBottom: 10 }}>
-      <Encabezado titulo="Todas las lecturas" subtitulo={`Termo 001 · ${perfil.nombre}`} atras />
+      <Encabezado titulo="Todas las lecturas" subtitulo={`Termo ${termo.contenedor} · ${perfil.nombre}`} atras />
       <Segmentos opciones={RANGOS.map((r) => ({ clave: r.clave, titulo: r.titulo }))} valor={rango} onChange={setRango} />
       {h.cargando && !h.puntos && (
         <View style={{ gap: 12 }}>

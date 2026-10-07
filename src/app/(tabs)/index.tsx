@@ -6,7 +6,7 @@ import { Grafico } from '../../components/Grafico';
 import { Aparecer, Boton, Divisor, Fila, Pantalla, Punto, Seccion, Skeleton, T } from '../../components/ui';
 import { Vial } from '../../components/Vial';
 import { useSuave } from '../../lib/anim';
-import { estadoLote, tendencia } from '../../lib/evaluar';
+import { estadoDe, tendencia } from '../../lib/evaluar';
 import { useVacty } from '../../lib/estado';
 import { hace } from '../../lib/formato';
 import { detectarCortes } from '../../lib/historial';
@@ -18,14 +18,15 @@ const VENTANA_MS = 5 * 60_000;
 
 export default function Monitor() {
   const t = useTema();
-  const { perfil, lectura, servidorConectado, sensorActivo, estado, causa, historial, lotes, alertas, reconocer } = useVacty();
+  const { perfil, termo, termos, lectura, servidorConectado, sensorActivo, estado, causa, historial, lotes, alertas, reconocer } = useVacty();
   const temp = useSuave(lectura ? lectura.temperatura : 0, 700);
-  if (!perfil) return null;
+  if (!perfil || !termo) return null;
 
-  const abiertas = alertas.filter((a) => a.status !== 'RESOLVED');
+  const abiertas = alertas.filter((a) => a.contenedor === termo.contenedor && a.status !== 'RESOLVED');
+  const otrasAbiertas = alertas.filter((a) => a.contenedor !== termo.contenedor && a.status === 'ACTIVE').length;
   const alertaTemprana = estado !== 'alerta' ? tendencia(historial, perfil) : null;
-  const porVencer = lotes.filter((l) => estadoLote(l.vencimiento) === 'porVencer').length;
-  const vencidos = lotes.filter((l) => estadoLote(l.vencimiento) === 'vencido').length;
+  const porVencer = lotes.filter((l) => estadoDe(l) === 'porVencer').length;
+  const vencidos = lotes.filter((l) => estadoDe(l) === 'vencido').length;
   const hayHumedad = lectura && !Number.isNaN(lectura.humedad);
   const color = t[estado];
 
@@ -42,9 +43,10 @@ export default function Monitor() {
     <Pantalla ambiente={estado} sinTitulo>
       <Aparecer>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ gap: 2 }}>
-            <T v="etiqueta" c="sub">Termo 001</T>
+          <View style={{ gap: 2, flex: 1 }}>
+            <T v="etiqueta" c="sub">Termo {termo.contenedor}</T>
             <T v="titulo">{perfil.nombre}</T>
+            <T v="chico" c="sub">{perfil.min}–{perfil.max} °C · {perfil.nota}</T>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 4 }}>
             <Punto color={conexion.c} pulso={conexion.pulso} />
@@ -74,7 +76,12 @@ export default function Monitor() {
                 <Text style={{ fontFamily: F.bold, fontSize: 17, color }}>{TEXTO[estado]}</Text>
               </View>
             ) : (
-              <T v="cuerpo" c="sub">{servidorConectado ? 'Esperando al sensor…' : 'Conectando…'}</T>
+              <View style={{ gap: 2 }}>
+                <T v="cuerpo" c="sub">{servidorConectado ? 'Esperando al sensor…' : 'Conectando…'}</T>
+                {termo.temperatura != null && termo.lastReadingAt && (
+                  <T v="chico" c="sub">Última: {termo.temperatura.toFixed(1)} °C, {hace(termo.lastReadingAt)}</T>
+                )}
+              </View>
             )}
             {lectura && estado !== 'ok' && causa && (
               <T v="chico" c="sub">{causa === 'frio' ? 'Riesgo de congelación' : 'Riesgo por calor'}</T>
@@ -93,6 +100,12 @@ export default function Monitor() {
           </View>
         </View>
       </Aparecer>
+
+      {otrasAbiertas > 0 && (
+        <Aparecer i={2}>
+          <Fila icono="alert-circle" color="alerta" titulo={`${otrasAbiertas} alerta(s) en tus otros termos`} detalle="Toca para cambiar de termo" onPress={() => router.push('/termos')} ultimo />
+        </Aparecer>
+      )}
 
       {abiertas.length > 0 && (
         <Aparecer i={2}>
@@ -145,7 +158,7 @@ export default function Monitor() {
       )}
 
       <Aparecer i={5}>
-        <Boton titulo="Cambiar vacuna" icono="swap-horizontal" variante="texto" onPress={() => router.push('/seleccion')} />
+        <Boton titulo={termos.length > 1 ? 'Cambiar de termo' : 'Mis termos'} icono="swap-horizontal" variante="texto" onPress={() => router.push('/termos')} />
       </Aparecer>
     </Pantalla>
   );
