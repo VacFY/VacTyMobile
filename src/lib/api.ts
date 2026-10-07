@@ -98,3 +98,12 @@ export function leerTelemetria(texto: string): Lectura | null {
     return null;
   }
 }
+
+// ---- Historial de lecturas guardadas en el servidor (maximo 1000 por consulta, de la mas reciente a la mas antigua)
+export type LecturaServidor = { id: number; contenedor: string; temperatura: number | null; humedad: number | null; receivedAt: string };
+
+export const listarLecturas = (base: string, contenedor: string, desde: Date, hasta?: Date) =>
+  pedir<LecturaServidor[]>(
+    base,
+    `/api/v1/readings?contenedor=${encodeURIComponent(contenedor)}&from=${encodeURIComponent(desde.toISOString())}` + (hasta ? `&to=${encodeURIComponent(hasta.toISOString())}` : ''),
+  );

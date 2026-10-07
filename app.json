@@ -5,17 +5,16 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vacty.app"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#390f07",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundImage": "./assets/android-icon-background.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.vacty.app"
@@ -35,7 +34,14 @@
                 "specialUse"
               ],
               "specialUseSubtype": "cold-chain-temperature-monitoring"
-            }
+            },
+            "icons": [
+              {
+                "name": "ic_notification",
+                "path": "./assets/notification-icon.png",
+                "type": "small"
+              }
+            ]
           }
         }
       ],
@@ -46,6 +52,16 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "backgroundColor": "#390f07",
+          "resizeMode": "contain"
+        }
       ]
     ],
     "scheme": "vacty",
@@ -54,6 +70,7 @@
       "eas": {
         "projectId": "44c42d2e-b3c0-4356-bd0d-d6468612497c"
       }
-    }
+    },
+    "description": "Monitoreo de la cadena de frío de vacunas para puestos de salud rurales."
   }
 }

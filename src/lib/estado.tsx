@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Vibration } from 'react-native';
 import {
   ApiError, asignarPerfil, CONTENEDOR, cerrarSesionServidor, conectarWS, crearPerfil, iniciarSesion, leerTelemetria,
-  listarAlertas, listarPerfiles, reconocerAlerta, urlWs, type AlertaServidor, type Lectura,
+  listarAlertas, listarLecturas, listarPerfiles, reconocerAlerta, urlWs, type AlertaServidor, type Lectura, type LecturaServidor,
 } from './api';
 import { evaluar, type Causa, type Estado } from './evaluar';
 import { detenerMonitor, iniciarMonitor, type EstadoMonitor } from './monitor';
@@ -13,7 +13,7 @@ import { perfilPorId, type PerfilVacuna } from './vacunas';
 export type Lote = { id: string; vacunaId: string; codigo: string; vencimiento: string; vvm?: 'utilizable' | 'descartar' };
 export type Sesion = 'cargando' | 'fuera' | 'dentro';
 
-const URL_DEFECTO = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.37:3000';
+const URL_DEFECTO = process.env.EXPO_PUBLIC_API_URL ?? 'https://vacfybackend.onrender.com';
 const MAX_HISTORIAL = 2000;
 const ESPACIO_HISTORIAL_MS = 5000;
 const SENSOR_INACTIVO_MS = 15000;
@@ -38,6 +38,7 @@ type Ctx = {
   historial: Lectura[];
   alertas: AlertaServidor[];
   reconocer: (id: number) => void;
+  cargarLecturas: (desde: Date, hasta?: Date) => Promise<LecturaServidor[]>;
   lotes: Lote[];
   agregarLote: (l: Omit<Lote, 'id'>) => void;
   actualizarLote: (id: string, cambios: Partial<Lote>) => void;
@@ -263,6 +264,7 @@ export function VactyProvider({ children }: { children: ReactNode }) {
         .then((a) => setAlertas((prev) => prev.map((x) => (x.id === id ? a : x))))
         .catch(() => {});
     },
+    cargarLecturas: (desde, hasta) => conSesion(() => listarLecturas(url, CONTENEDOR, desde, hasta)),
     lotes,
     agregarLote: (l) => persistirLotes((ls) => [...ls, { ...l, id: String(Date.now()) }]),
     actualizarLote: (id, c) => persistirLotes((ls) => ls.map((x) => (x.id === id ? { ...x, ...c } : x))),

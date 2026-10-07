@@ -60,7 +60,7 @@ async function tarea() {
         id: ID_MONITOR,
         title: 'VacTy está vigilando tus vacunas',
         body: texto,
-        android: { channelId: CANAL_MONITOR, asForegroundService: true, ongoing: true, onlyAlertOnce: true, pressAction: { id: 'default', launchActivity: 'default' } },
+        android: { smallIcon: 'ic_notification', color: '#390f07', channelId: CANAL_MONITOR, asForegroundService: true, ongoing: true, onlyAlertOnce: true, pressAction: { id: 'default', launchActivity: 'default' } },
       }).catch(() => {});
     }
     // Si el celular pierde conexion no puede avisar de nada: hay que decirlo.
@@ -69,7 +69,7 @@ async function tarea() {
         id: ID_SIN_CONEXION,
         title: 'VacTy sin conexión',
         body: 'No se están recibiendo alertas. Revisa la señal o el internet del celular.',
-        android: { channelId: CANAL_ALERTAS, category: lib!.AndroidCategory.ERROR, pressAction: { id: 'default', launchActivity: 'default' } },
+        android: { smallIcon: 'ic_notification', color: '#390f07', channelId: CANAL_ALERTAS, category: lib!.AndroidCategory.ERROR, pressAction: { id: 'default', launchActivity: 'default' } },
       }).catch(() => {});
     } else {
       n.cancelNotification(ID_SIN_CONEXION).catch(() => {});
@@ -102,6 +102,8 @@ async function tarea() {
         title: `${a.severity === 'CRITICAL' ? 'CRÍTICA: ' : 'Alerta: '}${TIPO[a.type]}`,
         body: a.message,
         android: {
+          smallIcon: 'ic_notification',
+          color: '#390f07',
           channelId: CANAL_ALERTAS,
           category: lib!.AndroidCategory.ALARM,
           timestamp: Date.parse(a.startedAt) || Date.now(),
@@ -167,7 +169,7 @@ export async function iniciarMonitor(url: string): Promise<EstadoMonitor> {
     id: ID_MONITOR,
     title: 'VacTy está vigilando tus vacunas',
     body: 'Conectando…',
-    android: { channelId: CANAL_MONITOR, asForegroundService: true, ongoing: true, onlyAlertOnce: true, pressAction: { id: 'default', launchActivity: 'default' } },
+    android: { smallIcon: 'ic_notification', color: '#390f07', channelId: CANAL_MONITOR, asForegroundService: true, ongoing: true, onlyAlertOnce: true, pressAction: { id: 'default', launchActivity: 'default' } },
   });
   return 'activo';
 }
