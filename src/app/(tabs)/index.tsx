@@ -1,125 +1,152 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { View } from 'react-native';
-import { AlertaCard } from '../../components/AlertaCard';
-import { Gauge } from '../../components/Gauge';
+import { Text, View } from 'react-native';
+import { AlertaFila } from '../../components/AlertaFila';
 import { Grafico } from '../../components/Grafico';
-import { Boton, Card, Pantalla, Pill, Punto, Skeleton, T } from '../../components/ui';
+import { Aparecer, Boton, Divisor, Fila, Pantalla, Punto, Seccion, Skeleton, T } from '../../components/ui';
+import { Vial } from '../../components/Vial';
+import { useSuave } from '../../lib/anim';
 import { estadoLote, tendencia } from '../../lib/evaluar';
 import { useVacty } from '../../lib/estado';
-import { hace, hora } from '../../lib/formato';
-import { suave, useTema } from '../../lib/theme';
+import { hace } from '../../lib/formato';
+import { detectarCortes } from '../../lib/historial';
+import { F, useTema } from '../../lib/theme';
+
+const ICONO = { ok: 'checkmark-circle', precaucion: 'warning', alerta: 'alert-circle' } as const;
+const TEXTO = { ok: 'En rango', precaucion: 'Cerca del límite', alerta: 'Fuera de rango' } as const;
+const VENTANA_MS = 5 * 60_000;
 
 export default function Monitor() {
   const t = useTema();
   const { perfil, lectura, servidorConectado, sensorActivo, estado, causa, historial, lotes, alertas, reconocer } = useVacty();
+  const temp = useSuave(lectura ? lectura.temperatura : 0, 700);
   if (!perfil) return null;
 
   const abiertas = alertas.filter((a) => a.status !== 'RESOLVED');
   const alertaTemprana = estado !== 'alerta' ? tendencia(historial, perfil) : null;
-  const recientes = historial.slice(-60).map((h) => h.temperatura);
   const porVencer = lotes.filter((l) => estadoLote(l.vencimiento) === 'porVencer').length;
   const vencidos = lotes.filter((l) => estadoLote(l.vencimiento) === 'vencido').length;
   const hayHumedad = lectura && !Number.isNaN(lectura.humedad);
+  const color = t[estado];
 
-  const conexion = sensorActivo
-    ? { txt: 'En vivo', color: t.ok, pulso: true }
-    : servidorConectado
-      ? { txt: 'Sensor sin datos', color: t.precaucion, pulso: false }
-      : { txt: 'Sin conexión', color: t.alerta, pulso: false };
+  const hasta = Date.now();
+  const reciente = historial.filter((h) => h.ts >= hasta - VENTANA_MS).map((h) => ({ ts: h.ts, v: h.temperatura }));
+  // El registro local solo se llena con la app abierta: la ventana empieza en la primera lectura que tenemos,
+  // para no confundir "la app no estaba grabando" con "el sensor no envio".
+  const desde = reciente.length ? Math.max(hasta - VENTANA_MS, reciente[0].ts - 4000) : hasta - VENTANA_MS;
+  const cortes = detectarCortes(reciente.map((p) => ({ ts: p.ts, temperatura: p.v, humedad: null })), desde, hasta, 20_000);
+
+  const conexion = sensorActivo ? { txt: 'En vivo', c: t.ok, pulso: true } : servidorConectado ? { txt: 'Sensor sin datos', c: t.precaucion, pulso: false } : { txt: 'Sin conexión', c: t.alerta, pulso: false };
 
   return (
-    <Pantalla titulo="Monitor" subtitulo={`Termo 001 · ${perfil.nombre}`}>
-      <View style={{ backgroundColor: t.hero, borderRadius: 28, padding: 20, alignItems: 'center', gap: 14, borderWidth: estado === 'alerta' ? 2 : 0, borderColor: t.alerta }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,244,214,0.1)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 }}>
-            <Ionicons name="medical" size={14} color={t.primario} />
-            <T v="chico" c="sobreHero">{perfil.nombre}</T>
+    <Pantalla ambiente={estado} sinTitulo>
+      <Aparecer>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ gap: 2 }}>
+            <T v="etiqueta" c="sub">Termo 001</T>
+            <T v="titulo">{perfil.nombre}</T>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Punto color={conexion.color} pulso={conexion.pulso} />
-            <T v="chico" c="subHero">{conexion.txt}</T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+            <Punto color={conexion.c} pulso={conexion.pulso} />
+            <T v="chico" c="sub">{conexion.txt}</T>
           </View>
         </View>
+      </Aparecer>
 
-        {lectura ? <Gauge valor={lectura.temperatura} min={perfil.min} max={perfil.max} estado={estado} /> : <Skeleton w={210} h={210} r={105} />}
-        {lectura ? <Pill estado={estado} sobreOscuro /> : <Skeleton w={130} h={32} r={16} />}
+      <Aparecer i={1}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Vial valor={lectura ? lectura.temperatura : null} min={perfil.min} max={perfil.max} estado={estado} ancho={176} />
+          <View style={{ flex: 1, gap: 6, paddingLeft: 4 }}>
+            <T v="etiqueta" c="sub">Temperatura</T>
+            {lectura ? (
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                <Text adjustsFontSizeToFit numberOfLines={1} style={{ fontFamily: F.xbold, fontSize: 60, lineHeight: 64, letterSpacing: -2.5, color: t.texto, flexShrink: 1 }}>
+                  {temp.toFixed(1)}
+                </Text>
+                <Text style={{ fontFamily: F.bold, fontSize: 20, marginTop: 6, color: t.sub }}>°C</Text>
+              </View>
+            ) : (
+              <Skeleton w={130} h={56} r={14} />
+            )}
+            {lectura ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name={ICONO[estado]} size={20} color={color} />
+                <Text style={{ fontFamily: F.bold, fontSize: 17, color }}>{TEXTO[estado]}</Text>
+              </View>
+            ) : (
+              <T v="cuerpo" c="sub">{servidorConectado ? 'Esperando al sensor…' : 'Conectando…'}</T>
+            )}
+            {lectura && estado !== 'ok' && causa && (
+              <T v="chico" c="sub">{causa === 'frio' ? 'Riesgo de congelación' : 'Riesgo por calor'}</T>
+            )}
+            <Divisor style={{ marginVertical: 8 }} />
+            <View style={{ flexDirection: 'row', gap: 18 }}>
+              <View>
+                <T v="etiqueta" c="sub">Humedad</T>
+                {lectura ? <T v="titulo">{hayHumedad ? `${lectura.humedad.toFixed(0)}%` : '--'}</T> : <Skeleton w={44} h={22} r={6} style={{ marginTop: 4 }} />}
+              </View>
+              <View>
+                <T v="etiqueta" c="sub">Lectura</T>
+                {lectura ? <T v="titulo">{hace(lectura.ts).replace('hace ', '')}</T> : <Skeleton w={44} h={22} r={6} style={{ marginTop: 4 }} />}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Aparecer>
 
-        {!lectura && (
-          <T v="cuerpo" c="subHero" style={{ textAlign: 'center' }}>
-            {servidorConectado ? 'Esperando lecturas del sensor…' : 'Conectando con el servidor…'}
-          </T>
-        )}
-        {lectura && estado !== 'ok' && causa && (
-          <T v="cuerpo" c="sobreHero" style={{ textAlign: 'center' }}>
-            {causa === 'frio' ? 'Riesgo de congelación: retira los paquetes fríos y aísla las vacunas.' : 'Riesgo por calor: protege el termo del sol y revisa los paquetes fríos.'}
-          </T>
-        )}
-      </View>
-
-      {abiertas.map((a) => (
-        <AlertaCard key={a.id} a={a} onReconocer={reconocer} />
-      ))}
+      {abiertas.length > 0 && (
+        <Aparecer i={2}>
+          <Seccion titulo={abiertas.length === 1 ? 'Una alerta abierta' : `${abiertas.length} alertas abiertas`}>
+            {abiertas.map((a, i) => (
+              <AlertaFila key={a.id} a={a} onReconocer={reconocer} ultimo={i === abiertas.length - 1} />
+            ))}
+          </Seccion>
+        </Aparecer>
+      )}
 
       {alertaTemprana && (
-        <Card style={{ backgroundColor: suave(t, 'precaucion'), borderColor: t.precaucion, flexDirection: 'row', gap: 12 }}>
-          <Ionicons name="trending-up" size={26} color={t.precaucion} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <T v="subtitulo" style={{ color: t.precaucion }}>
-              Alerta temprana: {alertaTemprana.causa === 'frio' ? 'baja' : 'sube'} {Math.abs(alertaTemprana.pendiente).toFixed(1)} °C/min
-            </T>
-            <T v="cuerpo">
-              Podría salir de rango en ~{Math.max(1, Math.round(alertaTemprana.minutosAlLimite))} min.{' '}
-              {alertaTemprana.causa === 'frio' ? 'Revisa que los paquetes fríos no toquen las vacunas.' : 'Protege el termo del calor.'}
-            </T>
+        <Aparecer i={2}>
+          <View style={{ flexDirection: 'row', gap: 14 }}>
+            <View style={{ width: 4, borderRadius: 2, backgroundColor: t.precaucion }} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="subtitulo" style={{ color: t.precaucion }}>
+                Alerta temprana · {alertaTemprana.causa === 'frio' ? 'baja' : 'sube'} {Math.abs(alertaTemprana.pendiente).toFixed(1)} °C/min
+              </T>
+              <T v="cuerpo" c="sub">
+                Podría salir de rango en ~{Math.max(1, Math.round(alertaTemprana.minutosAlLimite))} min.{' '}
+                {alertaTemprana.causa === 'frio' ? 'Revisa que los paquetes fríos no toquen las vacunas.' : 'Protege el termo del calor.'}
+              </T>
+            </View>
           </View>
-        </Card>
+        </Aparecer>
       )}
 
-      <View style={{ flexDirection: 'row', gap: 14 }}>
-        <Card style={{ flex: 1, gap: 6 }}>
-          <Ionicons name="water" size={20} color={t.sub} />
-          <T v="etiqueta" c="sub">Humedad</T>
-          {lectura ? <T v="titulo">{hayHumedad ? `${lectura.humedad.toFixed(0)} %` : '--'}</T> : <Skeleton w={70} h={24} r={8} />}
-        </Card>
-        <Card style={{ flex: 1, gap: 6 }}>
-          <Ionicons name="time" size={20} color={t.sub} />
-          <T v="etiqueta" c="sub">Última lectura</T>
-          {lectura ? (
-            <>
-              <T v="titulo">{hora(lectura.ts)}</T>
-              <T v="chico" c="sub">{hace(lectura.ts)}</T>
-            </>
+      <Aparecer i={3}>
+        <Seccion titulo="Últimos 5 minutos">
+          {reciente.length > 1 ? (
+            <Grafico puntos={reciente} min={perfil.min} max={perfil.max} desde={desde} hasta={hasta} cortes={cortes} alto={150} />
           ) : (
-            <Skeleton w={90} h={24} r={8} />
+            <Skeleton w="100%" h={150} r={16} />
           )}
-        </Card>
-      </View>
-
-      <Card style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <T v="subtitulo">Últimos minutos</T>
-          <T v="chico" c="sub">{recientes.length} lecturas</T>
-        </View>
-        {recientes.length > 1 ? <Grafico valores={recientes} min={perfil.min} max={perfil.max} /> : <Skeleton w="100%" h={120} r={14} />}
-      </Card>
+        </Seccion>
+      </Aparecer>
 
       {(porVencer > 0 || vencidos > 0) && (
-        <Card onPress={() => router.push('/lotes')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: vencidos > 0 ? t.alerta : t.precaucion }}>
-          <Ionicons name="medkit" size={26} color={vencidos > 0 ? t.alerta : t.precaucion} />
-          <View style={{ flex: 1 }}>
-            <T v="subtitulo">
-              {vencidos > 0 ? `${vencidos} lote(s) vencido(s)` : ''}
-              {vencidos > 0 && porVencer > 0 ? ' · ' : ''}
-              {porVencer > 0 ? `${porVencer} por vencer` : ''}
-            </T>
-            <T v="chico" c="sub">Toca para revisar los lotes</T>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={t.sub} />
-        </Card>
+        <Aparecer i={4}>
+          <Fila
+            icono="medkit"
+            color={vencidos > 0 ? 'alerta' : 'precaucion'}
+            titulo={vencidos > 0 ? `${vencidos} lote(s) vencido(s)` : `${porVencer} lote(s) por vencer`}
+            detalle={vencidos > 0 && porVencer > 0 ? `y ${porVencer} por vencer` : 'Toca para revisarlos'}
+            onPress={() => router.push('/lotes')}
+            ultimo
+          />
+        </Aparecer>
       )}
 
-      <Boton titulo="Cambiar tipo de vacuna" icono="swap-horizontal" variante="suave" onPress={() => router.push('/seleccion')} />
+      <Aparecer i={5}>
+        <Boton titulo="Cambiar vacuna" icono="swap-horizontal" variante="texto" onPress={() => router.push('/seleccion')} />
+      </Aparecer>
     </Pantalla>
   );
 }

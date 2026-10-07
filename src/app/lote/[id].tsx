@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
-import { Boton, Card, Pantalla, T, Vacio } from '../../components/ui';
+import { Text, View } from 'react-native';
+import { Aparecer, Boton, Pantalla, Seccion, T, Vacio } from '../../components/ui';
 import { diasParaVencer, estadoLote } from '../../lib/evaluar';
 import { useVacty } from '../../lib/estado';
-import { suave, useTema } from '../../lib/theme';
+import { F, useTema } from '../../lib/theme';
 import { perfilPorId } from '../../lib/vacunas';
 
 export default function VerificarLote() {
@@ -23,50 +23,74 @@ export default function VerificarLote() {
 
   const estado = estadoLote(lote.vencimiento);
   const dias = diasParaVencer(lote.vencimiento);
+  const vencido = estado === 'vencido';
   const descartar = () => {
     quitarLote(lote.id);
     router.back();
   };
+  const color = vencido ? t.alerta : estado === 'porVencer' ? t.precaucion : t.ok;
 
   return (
     <Pantalla titulo={perfilPorId(lote.vacunaId)?.nombre ?? 'Lote'} subtitulo={`Lote ${lote.codigo} · vence ${lote.vencimiento}`} atras>
-      {estado === 'vencido' ? (
-        <Card style={{ gap: 12, backgroundColor: suave(t, 'alerta'), borderColor: t.alerta }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Ionicons name="close-circle" size={30} color={t.alerta} />
-            <T v="titulo" style={{ color: t.alerta, flex: 1 }}>Lote vencido: uso bloqueado</T>
+      <Aparecer i={1}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
+          <Text style={{ fontFamily: F.xbold, fontSize: 84, lineHeight: 88, letterSpacing: -3, color }}>{Math.abs(dias)}</Text>
+          <Text style={{ fontFamily: F.bold, fontSize: 18, color: t.sub, paddingBottom: 12 }}>{vencido ? 'días vencido' : dias === 0 ? 'vence hoy' : 'días para vencer'}</Text>
+        </View>
+      </Aparecer>
+
+      {vencido ? (
+        <Aparecer i={2}>
+          <View style={{ flexDirection: 'row', gap: 14 }}>
+            <View style={{ width: 4, borderRadius: 2, backgroundColor: t.alerta }} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <T v="titulo" c="alerta">Uso bloqueado</T>
+              <T v="cuerpo" c="sub">Este lote está vencido: no lo apliques. Descártalo según el protocolo.</T>
+            </View>
           </View>
-          <T v="cuerpo">Venció hace {-dias} días. No lo apliques; descártalo según el protocolo.</T>
+          <View style={{ height: 18 }} />
           <Boton titulo="Marcar como descartado" icono="trash" variante="peligro" onPress={descartar} />
-        </Card>
+        </Aparecer>
       ) : (
         <>
-          <Card style={{ flexDirection: 'row', gap: 12, alignItems: 'center', borderColor: estado === 'porVencer' ? t.precaucion : t.ok }}>
-            <Ionicons name={estado === 'porVencer' ? 'hourglass' : 'checkmark-circle'} size={28} color={estado === 'porVencer' ? t.precaucion : t.ok} />
-            <View style={{ flex: 1 }}>
-              <T v="subtitulo">Vencimiento vigente</T>
-              <T v="cuerpo" c="sub">{estado === 'porVencer' ? `Quedan ${dias} días: úsalo primero.` : 'Sin riesgo de vencimiento próximo.'}</T>
-            </View>
-          </Card>
+          <Aparecer i={2}>
+            <Seccion titulo="1 · Vencimiento">
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Ionicons name={estado === 'porVencer' ? 'hourglass' : 'checkmark-circle'} size={26} color={color} />
+                <T v="cuerpo" style={{ flex: 1 }}>{estado === 'porVencer' ? 'Vigente, pero vence pronto: úsalo primero.' : 'Vigente, sin riesgo de vencimiento próximo.'}</T>
+              </View>
+            </Seccion>
+          </Aparecer>
 
-          <Card style={{ gap: 12 }}>
-            <T v="subtitulo">Revisa el VVM del frasco</T>
-            <T v="cuerpo" c="sub">Si el cuadrado interior es igual o más oscuro que el círculo, la vacuna no se usa.</T>
-            <Boton titulo="Cuadrado más claro: utilizable" icono="checkmark-circle" onPress={() => actualizarLote(lote.id, { vvm: 'utilizable' })} />
-            <Boton titulo="Igual o más oscuro: descartar" icono="close-circle" variante="oscuro" onPress={() => actualizarLote(lote.id, { vvm: 'descartar' })} />
-          </Card>
+          <Aparecer i={3}>
+            <Seccion titulo="2 · Revisa el VVM del frasco">
+              <T v="cuerpo" c="sub">Si el cuadrado interior es igual o más oscuro que el círculo, la vacuna no se usa.</T>
+              <View style={{ height: 8 }} />
+              <View style={{ gap: 12 }}>
+                <Boton titulo="Cuadrado más claro: utilizable" icono="checkmark-circle" onPress={() => actualizarLote(lote.id, { vvm: 'utilizable' })} />
+                <Boton titulo="Igual o más oscuro: descartar" icono="close-circle" variante="oscuro" onPress={() => actualizarLote(lote.id, { vvm: 'descartar' })} />
+              </View>
+            </Seccion>
+          </Aparecer>
 
           {lote.vvm === 'utilizable' && (
-            <Card style={{ backgroundColor: suave(t, 'ok'), borderColor: t.ok, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-              <Ionicons name="shield-checkmark" size={26} color={t.ok} />
-              <T v="subtitulo" style={{ color: t.ok, flex: 1 }}>Verificado: puedes aplicar este lote</T>
-            </Card>
+            <Aparecer>
+              <View style={{ flexDirection: 'row', gap: 14 }}>
+                <View style={{ width: 4, borderRadius: 2, backgroundColor: t.ok }} />
+                <T v="titulo" c="ok" style={{ flex: 1 }}>Verificado: puedes aplicar este lote</T>
+              </View>
+            </Aparecer>
           )}
           {lote.vvm === 'descartar' && (
-            <Card style={{ gap: 12, backgroundColor: suave(t, 'alerta'), borderColor: t.alerta }}>
-              <T v="subtitulo" style={{ color: t.alerta }}>VVM no utilizable: no aplicar. Descarta el frasco.</T>
-              <Boton titulo="Marcar como descartado" icono="trash" variante="peligro" onPress={descartar} />
-            </Card>
+            <Aparecer>
+              <View style={{ flexDirection: 'row', gap: 14 }}>
+                <View style={{ width: 4, borderRadius: 2, backgroundColor: t.alerta }} />
+                <View style={{ flex: 1, gap: 12 }}>
+                  <T v="titulo" c="alerta">VVM no utilizable: no aplicar</T>
+                  <Boton titulo="Marcar como descartado" icono="trash" variante="peligro" onPress={descartar} />
+                </View>
+              </View>
+            </Aparecer>
           )}
         </>
       )}

@@ -1,11 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
-import { Boton, Campo, Card, Chip, Pantalla, Seccion, T, Vacio } from '../../components/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import { Aparecer, Boton, Campo, Chip, Pantalla, Seccion, T, Toque, Vacio } from '../../components/ui';
 import { diasParaVencer, estadoLote, fechaValida, type EstadoLote } from '../../lib/evaluar';
 import { useVacty } from '../../lib/estado';
-import { suave, useTema, type ColorTexto } from '../../lib/theme';
+import { F, useTema } from '../../lib/theme';
 import { PERFILES, perfilPorId } from '../../lib/vacunas';
 
 const SECCIONES: { clave: EstadoLote; titulo: string; color: 'alerta' | 'precaucion' | 'ok' }[] = [
@@ -33,55 +32,58 @@ export default function Lotes() {
   };
 
   return (
-    <Pantalla titulo="Lotes" subtitulo="Control de vencimiento antes de vacunar">
-      {abierto ? (
-        <Card style={{ gap: 14 }}>
-          <T v="titulo">Nuevo lote</T>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {PERFILES.map((p) => (
-              <Chip key={p.id} texto={p.nombre} activo={vacunaId === p.id} onPress={() => setVacunaId(p.id)} />
-            ))}
+    <Pantalla titulo="Lotes" subtitulo="Revisa el vencimiento antes de vacunar">
+      <Aparecer i={1}>
+        {abierto ? (
+          <View style={{ gap: 18 }}>
+            <T v="titulo">Nuevo lote</T>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {PERFILES.map((p) => (
+                <Chip key={p.id} texto={p.nombre} activo={vacunaId === p.id} onPress={() => setVacunaId(p.id)} />
+              ))}
+            </View>
+            <Campo icono="barcode" etiqueta="Código de lote" placeholder="Ej. A1234" value={codigo} onChangeText={setCodigo} autoCapitalize="characters" />
+            <Campo icono="calendar" etiqueta="Vencimiento" placeholder="AAAA-MM-DD" value={venc} onChangeText={setVenc} keyboardType="numbers-and-punctuation" />
+            {fechaMal && <T v="chico" c="alerta">Fecha inválida. Usa el formato AAAA-MM-DD.</T>}
+            <Boton titulo="Guardar lote" icono="checkmark" onPress={guardar} deshabilitado={!listo} />
+            <Boton titulo="Cancelar" variante="texto" onPress={() => setAbierto(false)} />
           </View>
-          <Campo icono="barcode" etiqueta="Código de lote" placeholder="Ej. A1234" value={codigo} onChangeText={setCodigo} autoCapitalize="characters" />
-          <Campo icono="calendar" etiqueta="Vencimiento" placeholder="AAAA-MM-DD" value={venc} onChangeText={setVenc} keyboardType="numbers-and-punctuation" />
-          {fechaMal && <T v="chico" c="alerta">Fecha inválida. Usa el formato AAAA-MM-DD.</T>}
-          <Boton titulo="Guardar lote" icono="checkmark" onPress={guardar} deshabilitado={!listo} />
-          <Boton titulo="Cancelar" variante="suave" onPress={() => setAbierto(false)} />
-        </Card>
-      ) : (
-        <Boton titulo="Agregar lote" icono="add" onPress={() => setAbierto(true)} />
-      )}
+        ) : (
+          <Boton titulo="Agregar lote" icono="add" onPress={() => setAbierto(true)} />
+        )}
+      </Aparecer>
 
-      {lotes.length === 0 && (
-        <Card>
-          <Vacio icono="cube" titulo="Aún no hay lotes" texto="Agrega los lotes que llevas en el termo para vigilar su vencimiento." />
-        </Card>
-      )}
+      {lotes.length === 0 && !abierto && <Vacio icono="cube" titulo="Aún no hay lotes" texto="Agrega los lotes que llevas en el termo para vigilar su vencimiento." />}
 
-      {SECCIONES.map(({ clave, titulo, color }) => {
+      {SECCIONES.map(({ clave, titulo, color }, s) => {
         const items = lotes.filter((l) => estadoLote(l.vencimiento) === clave).sort((a, b) => a.vencimiento.localeCompare(b.vencimiento));
         if (!items.length) return null;
         return (
-          <Seccion key={clave} titulo={titulo} color={color as ColorTexto}>
-            {items.map((l) => {
-              const d = diasParaVencer(l.vencimiento);
-              return (
-                <Card key={l.id} onPress={() => router.push(`/lote/${l.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: suave(t, color), alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name={clave === 'vencido' ? 'close-circle' : clave === 'porVencer' ? 'hourglass' : 'checkmark-circle'} size={22} color={t[color]} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <T v="subtitulo">{perfilPorId(l.vacunaId)?.nombre} · {l.codigo}</T>
-                    <T v="chico" c="sub">
-                      Vence {l.vencimiento} · {d < 0 ? `hace ${-d} días` : d === 0 ? 'hoy' : `en ${d} días`}
-                      {l.vvm === 'utilizable' ? ' · VVM ok' : l.vvm === 'descartar' ? ' · VVM malo' : ''}
-                    </T>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={t.sub} />
-                </Card>
-              );
-            })}
-          </Seccion>
+          <Aparecer key={clave} i={s + 2}>
+            <Seccion titulo={titulo}>
+              {items.map((l, i) => {
+                const d = diasParaVencer(l.vencimiento);
+                return (
+                  <Toque key={l.id} onPress={() => router.push(`/lote/${l.id}`)}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, borderBottomWidth: i === items.length - 1 ? 0 : StyleSheet.hairlineWidth, borderBottomColor: t.borde }}>
+                      <View style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: t[color] }} />
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <T v="subtitulo">{perfilPorId(l.vacunaId)?.nombre}</T>
+                        <T v="chico" c="sub">
+                          Lote {l.codigo} · vence {l.vencimiento}
+                          {l.vvm === 'utilizable' ? ' · VVM ok' : l.vvm === 'descartar' ? ' · VVM malo' : ''}
+                        </T>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={{ fontFamily: F.xbold, fontSize: 28, letterSpacing: -1, color: t[color] }}>{Math.abs(d)}</Text>
+                        <T v="etiqueta" c="sub" style={{ fontSize: 10 }}>{d < 0 ? 'días vencido' : d === 0 ? 'vence hoy' : 'días'}</T>
+                      </View>
+                    </View>
+                  </Toque>
+                );
+              })}
+            </Seccion>
+          </Aparecer>
         );
       })}
     </Pantalla>

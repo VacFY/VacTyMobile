@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { View } from 'react-native';
-import { Card, Pantalla, T } from '../components/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import { Aparecer, Pantalla, T, Toque } from '../components/ui';
 import { useVacty } from '../lib/estado';
-import { useTema } from '../lib/theme';
+import { F, useTema } from '../lib/theme';
 import { PERFILES } from '../lib/vacunas';
 
 export default function Seleccion() {
@@ -11,29 +11,36 @@ export default function Seleccion() {
   const { perfil, elegirVacuna } = useVacty();
   return (
     <Pantalla titulo="¿Qué vacuna lleva el termo?" subtitulo="Define el rango sano y cuándo se activan las alertas." atras={!!perfil}>
-      {PERFILES.map((p) => {
-        const activo = perfil?.id === p.id;
-        return (
-          <Card
-            key={p.id}
-            onPress={() => {
-              elegirVacuna(p.id);
-              router.replace('/');
-            }}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 2, borderColor: activo ? t.primario : t.borde }}
-          >
-            <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: t.primario, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="medical" size={24} color={t.sobrePrimario} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <T v="subtitulo">{p.nombre}</T>
-              <T v="chico" c="sub">{p.nota}</T>
-              <T v="chico" style={{ marginTop: 2 }}>{p.min} a {p.max} °C</T>
-            </View>
-            {activo && <Ionicons name="checkmark-circle" size={26} color={t.ok} />}
-          </Card>
-        );
-      })}
+      <View>
+        {PERFILES.map((p, i) => {
+          const activo = perfil?.id === p.id;
+          return (
+            <Aparecer key={p.id} i={i + 1}>
+              <Toque
+                onPress={() => {
+                  elegirVacuna(p.id);
+                  router.replace('/');
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 20, borderBottomWidth: i === PERFILES.length - 1 ? 0 : StyleSheet.hairlineWidth, borderBottomColor: t.borde }}>
+                  <View style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: activo ? t.primario : 'transparent' }} />
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <T v="titulo">{p.nombre}</T>
+                    <T v="chico" c="sub">{p.nota}</T>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontFamily: F.xbold, fontSize: 26, letterSpacing: -1, color: t.texto }}>
+                      {p.min < 0 ? `−${Math.abs(p.min)}` : p.min} – {p.max}
+                      <Text style={{ fontFamily: F.bold, fontSize: 14, color: t.sub }}> °C</Text>
+                    </Text>
+                  </View>
+                  {activo && <Ionicons name="checkmark-circle" size={24} color={t.ok} />}
+                </View>
+              </Toque>
+            </Aparecer>
+          );
+        })}
+      </View>
       <T v="chico" c="sub">Perfiles de ejemplo: los rangos finales deben validarse con la norma técnica (NTS 136).</T>
     </Pantalla>
   );

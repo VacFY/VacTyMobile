@@ -1,19 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Alert, AppState, Platform, Switch, View } from 'react-native';
-import { Boton, Card, Pantalla, Punto, Seccion, T, type IconName } from '../../components/ui';
+import { Aparecer, Boton, Fila, Pantalla, Punto, Seccion, T } from '../../components/ui';
 import { useVacty } from '../../lib/estado';
 import { abrirAjustesBateria, bateriaOptimizada } from '../../lib/monitor';
-import { suave, useTema } from '../../lib/theme';
+import { useTema } from '../../lib/theme';
 
-function Fila({ icono, titulo, valor, color }: { icono: IconName; titulo: string; valor: string; color: string }) {
-  const t = useTema();
+function Estado({ color, texto }: { color: string; texto: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 }}>
-      <Ionicons name={icono} size={20} color={t.sub} />
-      <T v="cuerpo" style={{ flex: 1 }}>{titulo}</T>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <Punto color={color} />
-      <T v="chico" c="sub">{valor}</T>
+      <T v="chico" c="sub">{texto}</T>
     </View>
   );
 }
@@ -42,24 +38,24 @@ export default function Ajustes() {
 
   return (
     <Pantalla titulo="Ajustes" subtitulo="Conexión y alertas en segundo plano">
-      <Seccion titulo="Conexión">
-        <Card style={{ gap: 4 }}>
-          <T v="chico" c="sub" style={{ marginBottom: 6 }}>{url}</T>
-          <Fila icono="server" titulo="Servidor" valor={servidorConectado ? 'Conectado' : 'Sin conexión'} color={servidorConectado ? t.ok : t.alerta} />
-          <Fila icono="pulse" titulo="Sensor" valor={sensorActivo ? 'Enviando' : 'Sin lecturas'} color={sensorActivo ? t.ok : t.precaucion} />
+      <Aparecer i={1}>
+        <Seccion titulo="Conexión">
+          <T v="chico" c="sub">{url}</T>
+          <Fila icono="server" titulo="Servidor" derecha={<Estado color={servidorConectado ? t.ok : t.alerta} texto={servidorConectado ? 'Conectado' : 'Sin conexión'} />} />
+          <Fila icono="pulse" titulo="Sensor" derecha={<Estado color={sensorActivo ? t.ok : t.precaucion} texto={sensorActivo ? 'Enviando' : 'Sin lecturas'} />} />
           <Fila
             icono="medical"
             titulo="Rango de la vacuna"
-            valor={perfilSync === 'ok' ? 'Sincronizado' : perfilSync === 'error' ? 'Error' : 'Sincronizando'}
-            color={perfilSync === 'ok' ? t.ok : perfilSync === 'error' ? t.alerta : t.precaucion}
+            ultimo
+            derecha={<Estado color={perfilSync === 'ok' ? t.ok : perfilSync === 'error' ? t.alerta : t.precaucion} texto={perfilSync === 'ok' ? 'Sincronizado' : perfilSync === 'error' ? 'Error' : 'Sincronizando'} />}
           />
-        </Card>
-      </Seccion>
+        </Seccion>
+      </Aparecer>
 
-      <Seccion titulo="Alertas en segundo plano">
-        <Card style={{ gap: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ flex: 1 }}>
+      <Aparecer i={2}>
+        <Seccion titulo="Alertas en segundo plano">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8 }}>
+            <View style={{ flex: 1, gap: 2 }}>
               <T v="subtitulo">Vigilar con la app cerrada</T>
               <T v="chico" style={{ color: colorMonitor }}>{textoMonitor}</T>
             </View>
@@ -67,23 +63,27 @@ export default function Ajustes() {
           </View>
           <T v="chico" c="sub">Mantiene una notificación fija mientras vigila. Se detiene al cerrar sesión.</T>
           {bateria && monitoreo && (
-            <View style={{ gap: 10, backgroundColor: suave(t, 'precaucion'), padding: 12, borderRadius: 14 }}>
-              <T v="chico" style={{ color: t.precaucion }}>El ahorro de batería puede pausar la vigilancia con el celular quieto. Desactívalo para VacTy.</T>
+            <View style={{ gap: 12, marginTop: 10 }}>
+              <T v="cuerpo" style={{ color: t.precaucion }}>El ahorro de batería puede pausar la vigilancia con el celular quieto. Desactívalo para VacTy.</T>
               <Boton titulo="Abrir ajustes de batería" icono="battery-charging" variante="oscuro" onPress={() => abrirAjustesBateria()} />
             </View>
           )}
-        </Card>
-      </Seccion>
+        </Seccion>
+      </Aparecer>
 
-      <Seccion titulo="Cuenta y datos">
-        <Boton
-          titulo="Borrar historial local"
-          icono="trash"
-          variante="suave"
-          onPress={() => Alert.alert('Borrar historial', 'Se eliminará el registro de temperaturas guardado en este celular.', [{ text: 'Cancelar' }, { text: 'Borrar', style: 'destructive', onPress: limpiarHistorial }])}
-        />
-        <Boton titulo="Cerrar sesión" icono="log-out" variante="peligro" onPress={salir} />
-      </Seccion>
+      <Aparecer i={3}>
+        <Seccion titulo="Cuenta y datos">
+          <View style={{ gap: 12, marginTop: 6 }}>
+            <Boton
+              titulo="Borrar historial local"
+              icono="trash"
+              variante="texto"
+              onPress={() => Alert.alert('Borrar historial', 'Se eliminará el registro de temperaturas guardado en este celular.', [{ text: 'Cancelar' }, { text: 'Borrar', style: 'destructive', onPress: limpiarHistorial }])}
+            />
+            <Boton titulo="Cerrar sesión" icono="log-out" variante="peligro" onPress={salir} />
+          </View>
+        </Seccion>
+      </Aparecer>
     </Pantalla>
   );
 }
