@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AppState, Platform, Switch, View } from 'react-native';
 import { Aparecer, Boton, Fila, Pantalla, Punto, Seccion, T } from '../../components/ui';
 import { useVacty } from '../../lib/estado';
-import { abrirAjustesBateria, bateriaOptimizada } from '../../lib/monitor';
+import { abrirAjustesAlertas, abrirAjustesBateria, alertasSilenciadas, bateriaOptimizada, ESPERA_PRUEBA_S, probarAlarma } from '../../lib/monitor';
 import { useTema } from '../../lib/theme';
 
 function Estado({ color, texto }: { color: string; texto: string }) {
@@ -19,13 +19,23 @@ export default function Ajustes() {
   const t = useTema();
   const { url, servidorConectado, sensorActivo, perfil, termo, usuario, limpiarHistorial, salir, monitoreo, cambiarMonitoreo, estadoMonitor } = useVacty();
   const [bateria, setBateria] = useState(false);
+  const [silenciadas, setSilenciadas] = useState(false);
 
+  // Se revisa otra vez al volver de los ajustes del celular. El canal de alertas existe desde que arranca el monitoreo.
   useEffect(() => {
-    const revisar = () => bateriaOptimizada().then(setBateria);
+    const revisar = () => {
+      bateriaOptimizada().then(setBateria);
+      alertasSilenciadas().then(setSilenciadas);
+    };
     revisar();
     const sub = AppState.addEventListener('change', (e) => e === 'active' && revisar());
     return () => sub.remove();
-  }, []);
+  }, [estadoMonitor]);
+
+  const probar = () => {
+    probarAlarma();
+    Alert.alert('Prueba de alarma', `Sonará en ${ESPERA_PRUEBA_S} segundos. Sal de la app o bloquea el celular para comprobar que suena y aparece en las notificaciones.`);
+  };
 
   const textoMonitor = !monitoreo
     ? 'Desactivado'
@@ -75,6 +85,17 @@ export default function Ajustes() {
             <Switch value={monitoreo} onValueChange={cambiarMonitoreo} trackColor={{ true: t.primario, false: t.borde }} thumbColor={monitoreo ? t.sobrePrimario : t.sub} />
           </View>
           <T v="chico" c="sub">Mantiene una notificación fija mientras vigila. Se detiene al cerrar sesión.</T>
+          {monitoreo && estadoMonitor === 'activo' && (
+            <View style={{ gap: 12, marginTop: 10 }}>
+              {silenciadas && (
+                <>
+                  <T v="cuerpo" style={{ color: t.alerta }}>Las alertas de temperatura están silenciadas en este celular: no sonarán ni aparecerán arriba de la pantalla.</T>
+                  <Boton titulo="Activar alertas de temperatura" icono="notifications" variante="peligro" onPress={() => abrirAjustesAlertas()} />
+                </>
+              )}
+              <Boton titulo="Probar alarma" icono="alarm" variante="texto" onPress={probar} />
+            </View>
+          )}
           {bateria && monitoreo && (
             <View style={{ gap: 12, marginTop: 10 }}>
               <T v="cuerpo" style={{ color: t.precaucion }}>El ahorro de batería puede pausar la vigilancia con el celular quieto. Desactívalo para VacTy.</T>

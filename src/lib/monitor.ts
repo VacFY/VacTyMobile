@@ -47,6 +47,45 @@ const TIPO: Record<AlertaServidor['type'], string> = {
   LOT_EXPIRED: 'Lote vencido',
 };
 
+async function crearCanales(l: Lib) {
+  await l.default.createChannel({ id: CANAL_MONITOR, name: 'Monitoreo activo', importance: l.AndroidImportance.LOW });
+  await l.default.createChannel({
+    id: CANAL_ALERTAS,
+    name: 'Alertas de temperatura',
+    importance: l.AndroidImportance.HIGH,
+    vibration: true,
+    vibrationPattern: [300, 700, 300, 700, 300, 700],
+    sound: 'default',
+    visibility: l.AndroidVisibility.PUBLIC,
+  });
+}
+
+// Con el celular en el bolsillo un solo pitido se pierde: si las vacunas estan en riesgo, el sonido y la
+// vibracion se repiten hasta que la enfermera toque o deslice la notificacion, o abra el panel.
+const insistente = (a: AlertaServidor) => a.severity === 'CRITICAL' || a.type === 'OUT_OF_RANGE';
+
+function mostrarAlerta(a: AlertaServidor) {
+  if (!lib) return;
+  lib.default.displayNotification({
+    id: `alerta-${a.id}`,
+    title: `${a.severity === 'CRITICAL' ? 'CRÍTICA: ' : 'Alerta: '}${a.title || TIPO[a.type] || 'Alerta'}`,
+    body: a.message,
+    android: {
+      smallIcon: 'ic_notification',
+      color: '#390f07',
+      channelId: CANAL_ALERTAS,
+      category: lib.AndroidCategory.ALARM,
+      // Android 7 no tiene canales: sin esto no aparece como ventana emergente.
+      importance: lib.AndroidImportance.HIGH,
+      loopSound: insistente(a),
+      style: { type: lib.AndroidStyle.BIGTEXT, text: a.message },
+      timestamp: Date.parse(a.startedAt) || Date.now(),
+      showTimestamp: true,
+      pressAction: { id: 'default', launchActivity: 'default' },
+    },
+  }).catch(() => {});
+}
+
 // Tarea que vive mientras dure el servicio. No depende de React: si la pantalla se destruye, sigue.
 async function tarea() {
   if (!lib) return;
@@ -109,20 +148,7 @@ async function tarea() {
       // Con la app abierta la pantalla ya muestra y hace vibrar la alerta.
       if (AppState.currentState === 'active') return;
       notificadas.add(a.id);
-      n.displayNotification({
-        id,
-        title: `${a.severity === 'CRITICAL' ? 'CRÍTICA: ' : 'Alerta: '}${a.title || TIPO[a.type] || 'Alerta'}`,
-        body: a.message,
-        android: {
-          smallIcon: 'ic_notification',
-          color: '#390f07',
-          channelId: CANAL_ALERTAS,
-          category: lib!.AndroidCategory.ALARM,
-          timestamp: Date.parse(a.startedAt) || Date.now(),
-          showTimestamp: true,
-          pressAction: { id: 'default', launchActivity: 'default' },
-        },
-      }).catch(() => {});
+      mostrarAlerta(a);
     },
     (abierto) => {
       alertasAbierto = abierto;
@@ -165,16 +191,7 @@ export async function iniciarMonitor(url: string): Promise<EstadoMonitor> {
   const permiso = await n.requestPermission();
   if (permiso.authorizationStatus < lib.AuthorizationStatus.AUTHORIZED) return 'sin-permiso';
 
-  await n.createChannel({ id: CANAL_MONITOR, name: 'Monitoreo activo', importance: lib.AndroidImportance.LOW });
-  await n.createChannel({
-    id: CANAL_ALERTAS,
-    name: 'Alertas de temperatura',
-    importance: lib.AndroidImportance.HIGH,
-    vibration: true,
-    vibrationPattern: [300, 700, 300, 700, 300, 700],
-    sound: 'default',
-    visibility: lib.AndroidVisibility.PUBLIC,
-  });
+  await crearCanales(lib);
 
   urlActual = url;
   urlEnEjecucion = url;
@@ -201,3 +218,36 @@ export async function bateriaOptimizada(): Promise<boolean> {
   return lib.default.isBatteryOptimizationEnabled().catch(() => false);
 }
 export const abrirAjustesBateria = () => lib?.default.openBatteryOptimizationSettings().catch(() => {});
+
+// Si la enfermera (o la capa del fabricante) bajo o bloqueo el canal, la alarma llega sin sonido ni ventana emergente.
+export async function alertasSilenciadas(): Promise<boolean> {
+  if (!lib) return false;
+  const canal = await lib.default.getChannel(CANAL_ALERTAS).catch(() => null);
+  return !!canal && (canal.blocked || (canal.importance ?? lib.AndroidImportance.HIGH) < lib.AndroidImportance.HIGH);
+}
+export const abrirAjustesAlertas = () => lib?.default.openNotificationSettings(CANAL_ALERTAS).catch(() => {});
+
+export const ESPERA_PRUEBA_S = 10;
+
+/**
+ * Lanza una alarma de ejemplo en unos segundos, para salir de la app y comprobar que suena y aparece.
+ * Solo con el monitoreo activo: su servicio crea el canal y mantiene vivo el temporizador con la app cerrada.
+ */
+export function probarAlarma() {
+  setTimeout(
+    () =>
+      mostrarAlerta({
+        id: 0,
+        contenedor: contenedorActual ?? '',
+        type: 'OUT_OF_RANGE',
+        severity: 'CRITICAL',
+        status: 'ACTIVE',
+        title: 'Prueba de alarma',
+        message: 'Así suena y se ve una alerta de temperatura con la app cerrada. Tócala o deslízala para silenciarla.',
+        triggerValue: null,
+        startedAt: new Date().toISOString(),
+        resolvedAt: null,
+      }),
+    ESPERA_PRUEBA_S * 1000,
+  );
+}
