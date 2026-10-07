@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "VacTy",
+    "slug": "vacty",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vacty.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -16,10 +17,35 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.vacty.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "react-native-notify-kit",
+        {
+          "android": {
+            "foregroundService": {
+              "types": [
+                "specialUse"
+              ],
+              "specialUseSubtype": "cold-chain-temperature-monitoring"
+            }
+          }
+        }
+      ]
+    ],
+    "scheme": "vacty",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "44c42d2e-b3c0-4356-bd0d-d6468612497c"
+      }
     }
   }
 }
